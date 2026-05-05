@@ -1,7 +1,5 @@
 package com.whatsappclone.backend.model;
 
-import com.whatsappclone.backend.model.Message;
-import com.whatsappclone.backend.model.User;
 import com.whatsappclone.backend.repository.MessageRepository;
 import com.whatsappclone.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
