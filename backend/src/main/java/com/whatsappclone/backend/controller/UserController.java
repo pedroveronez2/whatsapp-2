@@ -38,7 +38,7 @@ public class UserController {
         String password = body.get("password");
 
         Optional<User> user = userService.login(username, password);
-
+ 
         if (user.isPresent()) {
             return ResponseEntity.ok(Map.of(
                 "id", user.get().getId(),
