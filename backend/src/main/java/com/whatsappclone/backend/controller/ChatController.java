@@ -1,4 +1,4 @@
-package com.whatsappclone.backend.model;
+package com.whatsappclone.backend.controller;
 
 import com.whatsappclone.backend.model.Message;
 import com.whatsappclone.backend.service.ChatService;
