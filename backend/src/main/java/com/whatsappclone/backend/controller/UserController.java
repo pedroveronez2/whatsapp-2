@@ -5,6 +5,8 @@ import com.whatsappclone.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -38,11 +40,12 @@ public class UserController {
         String password = body.get("password");
 
         Optional<User> user = userService.login(username, password);
- 
+
         if (user.isPresent()) {
             return ResponseEntity.ok(Map.of(
                 "id", user.get().getId(),
                 "username", user.get().getUsername(),
+                "online", user.get().isOnline(),
                 "message", "Login realizado com sucesso!"
             ));
         } else {
@@ -50,8 +53,25 @@ public class UserController {
         }
     }
 
+    @PostMapping("/logout/{id}")
+    public ResponseEntity<?> logout(@PathVariable Long id) {
+        userService.logout(id);
+        return ResponseEntity.ok(Map.of("message", "Logout realizado com sucesso!"));
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<List<User>> listUsers() {
+        return ResponseEntity.ok(userService.listAllUsers());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getUser(@PathVariable Long id) {
-        return ResponseEntity.ok(Map.of("message", "em breve!"));
+        return userService.findById(id)
+                .map(u -> ResponseEntity.ok(Map.of(
+                    "id", u.getId(),
+                    "username", u.getUsername(),
+                    "online", u.isOnline()
+                )))
+                .orElse(ResponseEntity.notFound().build());
     }
 }
