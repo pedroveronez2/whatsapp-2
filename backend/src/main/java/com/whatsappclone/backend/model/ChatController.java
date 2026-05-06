@@ -1,8 +1,9 @@
 package com.whatsappclone.backend.model;
 
-import com.whatsappclone.backend.repository.MessageRepository;
-import com.whatsappclone.backend.repository.UserRepository;
+import com.whatsappclone.backend.model.Message;
+import com.whatsappclone.backend.service.ChatService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -16,8 +17,7 @@ import java.util.Map;
 public class ChatController {
 
     private final SimpMessagingTemplate messagingTemplate;
-    private final MessageRepository messageRepository;
-    private final UserRepository userRepository;
+    private final ChatService chatService;
 
     @MessageMapping("/chat")
     public void sendMessage(@Payload Map<String, String> payload) {
@@ -25,21 +25,13 @@ public class ChatController {
         Long receiverId = Long.parseLong(payload.get("receiverId"));
         String content = payload.get("content");
 
-        User sender = userRepository.findById(senderId).orElseThrow();
-        User receiver = userRepository.findById(receiverId).orElseThrow();
-
-        Message message = new Message();
-        message.setSender(sender);
-        message.setReceiver(receiver);
-        message.setContent(content);
-
-        messageRepository.save(message);
+        Message message = chatService.sendMessage(senderId, receiverId, content);
 
         messagingTemplate.convertAndSend(
             "/topic/messages/" + receiverId,
             (Object) Map.of(
                 "senderId", senderId.toString(),
-                "senderUsername", sender.getUsername(),
+                "senderUsername", message.getSender().getUsername(),
                 "content", content,
                 "sentAt", message.getSentAt().toString()
             )
@@ -47,13 +39,17 @@ public class ChatController {
     }
 
     @GetMapping("/api/messages/{senderId}/{receiverId}")
-    public List<Message> getHistory(
+    public ResponseEntity<List<Message>> getHistory(
         @PathVariable Long senderId,
         @PathVariable Long receiverId
     ) {
-        return messageRepository
-            .findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderBySentAtAsc(
-                senderId, receiverId, receiverId, senderId
-            );
+        return ResponseEntity.ok(chatService.getHistory(senderId, receiverId));
+    }
+
+    @GetMapping("/api/messages/recent/{userId}")
+    public ResponseEntity<List<Message>> getRecentConversations(
+        @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(chatService.getRecentConversations(userId));
     }
 }
