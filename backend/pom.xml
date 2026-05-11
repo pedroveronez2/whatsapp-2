@@ -68,6 +68,7 @@
 			<artifactId>spring-boot-starter-websocket-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -118,6 +119,7 @@
 							</annotationProcessorPaths>
 						</configuration>
 					</execution>
+					
 				</executions>
 			</plugin>
 		</plugins>
