@@ -3,6 +3,7 @@ package com.whatsappclone.backend.service;
 import com.whatsappclone.backend.model.User;
 import com.whatsappclone.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,6 +14,8 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final JwtService jwtService;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     public User register(String username, String password) {
         if (userRepository.existsByUsername(username)) {
@@ -21,23 +24,20 @@ public class UserService {
 
         User user = new User();
         user.setUsername(username);
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(password)); // bcrypt aqui!
         user.setOnline(false);
 
         return userRepository.save(user);
     }
 
-    public Optional<User> login(String username, String password) {
-        Optional<User> userOpt = userRepository.findByUsername(username)
-                .filter(u -> u.getPassword().equals(password));
-
-        // atualiza status para online ao logar
-        userOpt.ifPresent(u -> {
-            u.setOnline(true);
-            userRepository.save(u);
-        });
-
-        return userOpt;
+    public Optional<String> login(String username, String password) {
+        return userRepository.findByUsername(username)
+                .filter(u -> passwordEncoder.matches(password, u.getPassword()))
+                .map(u -> {
+                    u.setOnline(true);
+                    userRepository.save(u);
+                    return jwtService.generateToken(u.getId(), u.getUsername());
+                });
     }
 
     public void logout(Long userId) {

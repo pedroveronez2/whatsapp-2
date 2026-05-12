@@ -39,13 +39,11 @@ public class UserController {
         String username = body.get("username");
         String password = body.get("password");
 
-        Optional<User> user = userService.login(username, password);
+        Optional<String> token = userService.login(username, password);
 
-        if (user.isPresent()) {
+        if (token.isPresent()) {
             return ResponseEntity.ok(Map.of(
-                "id", user.get().getId(),
-                "username", user.get().getUsername(),
-                "online", user.get().isOnline(),
+                "token", token.get(),
                 "message", "Login realizado com sucesso!"
             ));
         } else {
