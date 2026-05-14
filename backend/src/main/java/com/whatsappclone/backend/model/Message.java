@@ -21,13 +21,21 @@ public class Message {
     @JoinColumn(name = "receiver_id", nullable = false)
     private User receiver;
 
-    @Column(nullable = false)
     private String content;
+
+    @Enumerated(EnumType.STRING)
+    private MessageType type;
+
+    private String mediaUrl;
 
     private LocalDateTime sentAt;
 
     @PrePersist
     public void prePersist() {
         this.sentAt = LocalDateTime.now();
+    }
+
+    public enum MessageType {
+        TEXT, IMAGE, AUDIO
     }
 }

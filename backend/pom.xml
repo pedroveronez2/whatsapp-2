@@ -68,6 +68,12 @@
 			<artifactId>spring-boot-starter-websocket-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+<!-- Apache Commons IO para manipulação de arquivos -->
+<dependency>
+    <groupId>commons-io</groupId>
+    <artifactId>commons-io</artifactId>
+    <version>2.15.1</version>
+</dependency>
 <!-- Spring Security -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
