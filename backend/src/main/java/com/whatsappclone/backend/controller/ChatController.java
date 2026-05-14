@@ -25,7 +25,7 @@ public class ChatController {
         Long receiverId = Long.parseLong(payload.get("receiverId"));
         String content = payload.get("content");
 
-        Message message = chatService.sendMessage(senderId, receiverId, content);
+        Message message = chatService.sendTextMessage(senderId, receiverId, content);
 
         messagingTemplate.convertAndSend(
             "/topic/messages/" + receiverId,

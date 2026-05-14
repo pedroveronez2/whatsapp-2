@@ -12,30 +12,26 @@
             padding: 0 20px;
         }
 
-        h2 {
-            color: #333;
+        h2 { color: #333; }
+
+        input, button {
+            padding: 8px;
+            margin: 4px;
+            border-radius: 4px;
         }
 
         input {
-            padding: 8px;
-            margin: 4px;
             border: 1px solid #ccc;
-            border-radius: 4px;
         }
 
         button {
-            padding: 8px 16px;
-            margin: 4px;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 4px;
             cursor: pointer;
         }
 
-        button:hover {
-            background-color: #45a049;
-        }
+        button:hover { background-color: #45a049; }
 
         #messages {
             list-style: none;
@@ -52,9 +48,16 @@
             border-bottom: 1px solid #eee;
         }
 
-        #statusConexao {
-            font-weight: bold;
-            margin-left: 10px;
+        #messages img {
+            max-width: 200px;
+            border-radius: 8px;
+            display: block;
+            margin-top: 4px;
+        }
+
+        #messages audio {
+            display: block;
+            margin-top: 4px;
         }
 
         .section {
@@ -70,6 +73,15 @@
             display: block;
             margin-top: 6px;
         }
+
+        #statusConexao {
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .msg-enviada { color: #4CAF50; }
+        .msg-recebida { color: #333; }
+        .msg-presenca { color: #999; font-style: italic; }
     </style>
 </head>
 <body>
@@ -95,9 +107,23 @@
     </div>
 
     <div class="section">
-        <h3>Mensagem</h3>
+        <h3>Mensagem de Texto</h3>
         <input id="content" placeholder="Digite sua mensagem..." style="width: 70%;" />
         <button onclick="sendMessage()">Enviar</button>
+    </div>
+
+    <div class="section">
+        <h3>Enviar Imagem 🖼️</h3>
+        <input type="file" id="imageFile" accept="image/*" />
+        <button onclick="sendImage()">Enviar Imagem</button>
+    </div>
+
+    <div class="section">
+        <h3>Enviar Áudio 🎤</h3>
+        <button onclick="startRecording()" id="btnGravar">● Gravar</button>
+        <button onclick="stopRecording()" id="btnParar" disabled>■ Parar</button>
+        <button onclick="sendAudio()" id="btnEnviarAudio" disabled>Enviar Áudio</button>
+        <audio id="audioPreview" controls style="display:none; margin-top:8px;"></audio>
     </div>
 
     <div class="section">
@@ -107,6 +133,10 @@
 
     <script>
         let stompClient = null;
+        let token = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioBlob = null;
 
         async function conectar() {
             const meuId = document.getElementById('meuId').value;
@@ -118,7 +148,6 @@
                 return;
             }
 
-            // faz login e pega o token
             const loginResp = await fetch('http://localhost:8080/api/users/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -132,13 +161,12 @@
                 return;
             }
 
-            const token = loginData.token;
+            token = loginData.token;
             console.log('Token obtido:', token);
 
             const socket = new SockJS('http://localhost:8080/ws');
             stompClient = Stomp.over(socket);
 
-            // passa o token no header do WebSocket
             const headers = {
                 Authorization: 'Bearer ' + token,
                 userId: meuId
@@ -147,31 +175,23 @@
             stompClient.connect(headers, function () {
                 console.log('Conectado e autenticado!');
 
-                // atualiza status visual
                 document.getElementById('statusConexao').textContent = '● conectado';
                 document.getElementById('statusConexao').style.color = 'green';
 
-                // avisa o servidor que está online
                 stompClient.send('/app/presence', {}, JSON.stringify({
                     userId: meuId,
                     online: 'true'
                 }));
 
-                // inscreve nas mensagens
                 stompClient.subscribe('/topic/messages/' + meuId, function (msg) {
                     const body = JSON.parse(msg.body);
-                    const li = document.createElement('li');
-                    li.textContent = body.senderUsername + ': ' + body.content;
-                    document.getElementById('messages').appendChild(li);
+                    adicionarMensagem(body, false);
                 });
 
-                // inscreve no canal de presença
                 stompClient.subscribe('/topic/presence', function (msg) {
                     const body = JSON.parse(msg.body);
                     const status = body.online === 'true' ? 'online 🟢' : 'offline 🔴';
-                    const li = document.createElement('li');
-                    li.textContent = body.username + ' está ' + status;
-                    document.getElementById('messages').appendChild(li);
+                    adicionarPresenca(body.username + ' está ' + status);
                 });
 
             }, function (error) {
@@ -182,6 +202,36 @@
             });
         }
 
+        function adicionarMensagem(body, enviada) {
+            const li = document.createElement('li');
+            li.className = enviada ? 'msg-enviada' : 'msg-recebida';
+
+            if (body.type === 'IMAGE') {
+                li.textContent = (enviada ? 'Você' : body.senderUsername) + ' enviou uma imagem:';
+                const img = document.createElement('img');
+                img.src = 'http://localhost:8080' + body.mediaUrl;
+                li.appendChild(img);
+            } else if (body.type === 'AUDIO') {
+                li.textContent = (enviada ? 'Você' : body.senderUsername) + ' enviou um áudio:';
+                const audio = document.createElement('audio');
+                audio.src = 'http://localhost:8080' + body.mediaUrl;
+                audio.controls = true;
+                li.appendChild(audio);
+            } else {
+                li.textContent = (enviada ? 'Você' : body.senderUsername) + ': ' + body.content;
+            }
+
+            document.getElementById('messages').appendChild(li);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+
+        function adicionarPresenca(texto) {
+            const li = document.createElement('li');
+            li.className = 'msg-presenca';
+            li.textContent = texto;
+            document.getElementById('messages').appendChild(li);
+        }
+
         function sendMessage() {
             if (!stompClient) {
                 alert('Conecte primeiro!');
@@ -189,7 +239,6 @@
             }
 
             const content = document.getElementById('content').value;
-
             if (!content.trim()) {
                 alert('Digite uma mensagem!');
                 return;
@@ -203,22 +252,92 @@
 
             stompClient.send('/app/chat', {}, JSON.stringify(payload));
 
-            // exibe a mensagem enviada na própria tela
-            const li = document.createElement('li');
-            li.textContent = 'Você: ' + content;
-            li.style.color = '#4CAF50';
-            document.getElementById('messages').appendChild(li);
-
-            // limpa o campo após enviar
+            adicionarMensagem({ content, type: 'TEXT' }, true);
             document.getElementById('content').value = '';
         }
 
-        // envia mensagem com Enter
+        async function sendImage() {
+            const file = document.getElementById('imageFile').files[0];
+            if (!file) {
+                alert('Selecione uma imagem!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('senderId', document.getElementById('meuId').value);
+            formData.append('receiverId', document.getElementById('destinatarioId').value);
+            formData.append('file', file);
+
+            const resp = await fetch('http://localhost:8080/api/media/image', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + token },
+                body: formData
+            });
+
+            const data = await resp.json();
+            if (data.mediaUrl) {
+                adicionarMensagem({ type: 'IMAGE', mediaUrl: data.mediaUrl }, true);
+            } else {
+                alert('Erro ao enviar imagem: ' + data.error);
+            }
+        }
+
+        async function startRecording() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const url = URL.createObjectURL(audioBlob);
+                document.getElementById('audioPreview').src = url;
+                document.getElementById('audioPreview').style.display = 'block';
+                document.getElementById('btnEnviarAudio').disabled = false;
+            };
+
+            mediaRecorder.start();
+            document.getElementById('btnGravar').disabled = true;
+            document.getElementById('btnParar').disabled = false;
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            document.getElementById('btnGravar').disabled = false;
+            document.getElementById('btnParar').disabled = true;
+        }
+
+        async function sendAudio() {
+            if (!audioBlob) {
+                alert('Grave um áudio primeiro!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('senderId', document.getElementById('meuId').value);
+            formData.append('receiverId', document.getElementById('destinatarioId').value);
+            formData.append('file', audioBlob, 'audio.webm');
+
+            const resp = await fetch('http://localhost:8080/api/media/audio', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + token },
+                body: formData
+            });
+
+            const data = await resp.json();
+            if (data.mediaUrl) {
+                adicionarMensagem({ type: 'AUDIO', mediaUrl: data.mediaUrl }, true);
+                document.getElementById('audioPreview').style.display = 'none';
+                document.getElementById('btnEnviarAudio').disabled = true;
+                audioBlob = null;
+            } else {
+                alert('Erro ao enviar áudio: ' + data.error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('content').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
+                if (e.key === 'Enter') sendMessage();
             });
         });
     </script>
