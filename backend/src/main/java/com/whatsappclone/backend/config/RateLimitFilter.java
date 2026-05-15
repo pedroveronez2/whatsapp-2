@@ -21,7 +21,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
 
     private Bucket createBucket() {
-        Bandwidth limit = Bandwidth.classic(20, Refill.greedy(20, Duration.ofMinutes(1)));
+        Bandwidth limit = Bandwidth.classic(100, Refill.greedy(100, Duration.ofMinutes(1)));
         return Bucket.builder().addLimit(limit).build();
     }
 
@@ -29,22 +29,30 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return buckets.computeIfAbsent(ip, k -> createBucket());
     }
 
-    @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+@Override
+protected void doFilterInternal(
+        HttpServletRequest request,
+        HttpServletResponse response,
+        FilterChain filterChain
+) throws ServletException, IOException {
 
-        String ip = request.getRemoteAddr();
-        Bucket bucket = getBucket(ip);
+    String path = request.getRequestURI();
 
-        if (bucket.tryConsume(1)) {
-            filterChain.doFilter(request, response);
-        } else {
-            response.setStatus(429);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Muitas requisições! Tente novamente em 1 minuto.\"}");
-        }
+    // libera WebSocket do rate limit
+    if (path.startsWith("/ws")) {
+        filterChain.doFilter(request, response);
+        return;
     }
+
+    String ip = request.getRemoteAddr();
+    Bucket bucket = getBucket(ip);
+
+    if (bucket.tryConsume(1)) {
+        filterChain.doFilter(request, response);
+    } else {
+        response.setStatus(429);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\": \"Muitas requisições! Tente novamente em 1 minuto.\"}");
+    }
+}
 }

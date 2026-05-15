@@ -32,7 +32,8 @@ public class PresenceController {
                 messagingTemplate.convertAndSend("/topic/presence",
                     (Object) Map.of(
                         "userId", userId.toString(),
-                        "username", u.getUsername(),
+                        "name", u.getName(),
+                        "phone", u.getPhone(),
                         "online", "true"
                     )
                 );
@@ -52,13 +53,15 @@ public class PresenceController {
                 messagingTemplate.convertAndSend("/topic/presence",
                     (Object) Map.of(
                         "userId", userId.toString(),
-                        "username", u.getUsername(),
+                        "name", u.getName(),
+                        "phone", u.getPhone(),
                         "online", "false"
                     )
                 );
             });
         }
     }
+
     @MessageMapping("/presence")
     public void updatePresence(@Payload Map<String, String> payload) {
         Long userId = Long.parseLong(payload.get("userId"));
@@ -66,7 +69,7 @@ public class PresenceController {
 
         userService.findById(userId).ifPresent(u -> {
             if (online.equals("true")) {
-                userService.login(u.getUsername(), u.getPassword());
+                userService.login(u.getPhone(), u.getPassword());
             } else {
                 userService.logout(userId);
             }
@@ -74,7 +77,8 @@ public class PresenceController {
             messagingTemplate.convertAndSend("/topic/presence",
                 (Object) Map.of(
                     "userId", userId.toString(),
-                    "username", u.getUsername(),
+                    "name", u.getName(),
+                    "phone", u.getPhone(),
                     "online", online
                 )
             );

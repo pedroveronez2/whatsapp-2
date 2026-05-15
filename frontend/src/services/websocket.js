@@ -1,12 +1,17 @@
-// src/services/websocket.js
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 
 let stompClient = null;
+let connected = false;
+let connecting = false;
 
 export function connectWebSocket(token, userId, onMessage, onPresence) {
+    if (connected || connecting) return;
+    connecting = true;
+
     const socket = new SockJS('http://localhost:8080/ws');
     stompClient = Stomp.over(socket);
+    stompClient.debug = null;
 
     const headers = {
         Authorization: `Bearer ${token}`,
@@ -15,44 +20,51 @@ export function connectWebSocket(token, userId, onMessage, onPresence) {
 
     stompClient.connect(headers, () => {
         console.log('WebSocket conectado!');
+        connected = true;
+        connecting = false;
 
-        // avisa que está online
-        stompClient.send('/app/presence', {}, JSON.stringify({
-            userId: String(userId),
-            online: 'true',
-        }));
+        setTimeout(() => {
+            if (!stompClient) return;
 
-        // inscreve nas mensagens
-        stompClient.subscribe(`/topic/messages/${userId}`, (msg) => {
-            const body = JSON.parse(msg.body);
-            onMessage(body);
-        });
+            stompClient.subscribe(`/topic/messages/${userId}`, (msg) => {
+                const body = JSON.parse(msg.body);
+                onMessage(body);
+            });
 
-        // inscreve na presença
-        stompClient.subscribe('/topic/presence', (msg) => {
-            const body = JSON.parse(msg.body);
-            onPresence(body);
-        });
+            stompClient.subscribe('/topic/presence', (msg) => {
+                const body = JSON.parse(msg.body);
+                onPresence(body);
+            });
+
+            stompClient.send('/app/presence', {}, JSON.stringify({
+                userId: String(userId),
+                online: 'true',
+            }));
+
+        }, 500);
+
+    }, (error) => {
+        console.error('Erro WebSocket:', error);
+        connected = false;
+        connecting = false;
+        stompClient = null;
     });
 }
 
-export function sendMessage(senderId, receiverId, content) {
-    if (!stompClient) return;
-
-    stompClient.send('/app/chat', {}, JSON.stringify({
-        senderId: String(senderId),
-        receiverId: String(receiverId),
-        content,
-    }));
-}
-
 export function disconnectWebSocket(userId) {
-    if (!stompClient) return;
+    if (!stompClient || !connected) return;
 
-    stompClient.send('/app/presence', {}, JSON.stringify({
-        userId: String(userId),
-        online: 'false',
-    }));
-
-    stompClient.disconnect();
+    try {
+        stompClient.send('/app/presence', {}, JSON.stringify({
+            userId: String(userId),
+            online: 'false',
+        }));
+        stompClient.disconnect();
+    } catch (e) {
+        console.warn('Erro ao desconectar:', e);
+    } finally {
+        connected = false;
+        connecting = false;
+        stompClient = null;
+    }
 }

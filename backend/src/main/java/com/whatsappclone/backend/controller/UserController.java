@@ -6,7 +6,9 @@ import com.whatsappclone.backend.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 import java.util.Map;
@@ -24,19 +26,21 @@ public class UserController {
     public ResponseEntity<?> register(
             @RequestBody Map<String, String> body,
             HttpServletRequest request) {
-        String username = body.get("username");
+        String phone = body.get("phone");
+        String name = body.get("name");
         String password = body.get("password");
 
         try {
-            User user = userService.register(username, password);
-            auditLogService.log("REGISTER", username, request.getRemoteAddr(), "Usuário criado com sucesso");
+            User user = userService.register(phone, name, password);
+            auditLogService.log("REGISTER", phone, request.getRemoteAddr(), "Usuário criado com sucesso");
             return ResponseEntity.ok(Map.of(
                 "id", user.getId(),
-                "username", user.getUsername(),
+                "phone", user.getPhone(),
+                "name", user.getName(),
                 "message", "Usuário criado com sucesso!"
             ));
         } catch (RuntimeException e) {
-            auditLogService.log("REGISTER_FAILED", username, request.getRemoteAddr(), e.getMessage());
+            auditLogService.log("REGISTER_FAILED", phone, request.getRemoteAddr(), e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -45,29 +49,26 @@ public class UserController {
     public ResponseEntity<?> login(
             @RequestBody Map<String, String> body,
             HttpServletRequest request) {
-        String username = body.get("username");
+        String phone = body.get("phone");
         String password = body.get("password");
 
-        Optional<String> token = userService.login(username, password);
+        Optional<String> token = userService.login(phone, password);
 
         if (token.isPresent()) {
-            auditLogService.log("LOGIN", username, request.getRemoteAddr(), "Login realizado com sucesso");
+            auditLogService.log("LOGIN", phone, request.getRemoteAddr(), "Login realizado com sucesso");
             return ResponseEntity.ok(Map.of(
                 "token", token.get(),
                 "message", "Login realizado com sucesso!"
             ));
         } else {
-            auditLogService.log("LOGIN_FAILED", username, request.getRemoteAddr(), "Senha inválida");
-            return ResponseEntity.status(401).body(Map.of("error", "Usuário ou senha inválidos!"));
+            auditLogService.log("LOGIN_FAILED", phone, request.getRemoteAddr(), "Senha inválida");
+            return ResponseEntity.status(401).body(Map.of("error", "Telefone ou senha inválidos!"));
         }
     }
 
     @PostMapping("/logout/{id}")
-    public ResponseEntity<?> logout(
-            @PathVariable Long id,
-            HttpServletRequest request) {
+    public ResponseEntity<?> logout(@PathVariable Long id) {
         userService.logout(id);
-        auditLogService.log("LOGOUT", id.toString(), request.getRemoteAddr(), "Logout realizado");
         return ResponseEntity.ok(Map.of("message", "Logout realizado com sucesso!"));
     }
 
@@ -81,9 +82,22 @@ public class UserController {
         return userService.findById(id)
                 .map(u -> ResponseEntity.ok(Map.of(
                     "id", u.getId(),
-                    "username", u.getUsername(),
+                    "phone", u.getPhone(),
+                    "name", u.getName(),
                     "online", u.isOnline()
                 )))
                 .orElse(ResponseEntity.notFound().build());
+    }
+    @GetMapping("/me")
+    public ResponseEntity<?> getMe(Authentication authentication) {
+        Long userId = (Long) ((UsernamePasswordAuthenticationToken) authentication).getDetails();
+        return userService.findById(userId)
+            .map(u -> ResponseEntity.ok(Map.of(
+                "id", u.getId(),
+                "name", u.getName(),
+                "phone", u.getPhone(),
+                "online", u.isOnline()
+            )))
+            .orElse(ResponseEntity.notFound().build());
     }
 }

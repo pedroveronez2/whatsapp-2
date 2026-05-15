@@ -7,8 +7,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,8 +34,9 @@ public class ChatController {
             "/topic/messages/" + receiverId,
             (Object) Map.of(
                 "senderId", senderId.toString(),
-                "senderUsername", message.getSender().getUsername(),
+                "senderUsername", message.getSender().getName(),
                 "content", content,
+                "type", "TEXT",
                 "sentAt", message.getSentAt().toString()
             )
         );
@@ -51,5 +55,29 @@ public class ChatController {
         @PathVariable Long userId
     ) {
         return ResponseEntity.ok(chatService.getRecentConversations(userId));
+    }
+
+    @PostMapping("/api/messages/send")
+    public ResponseEntity<?> sendTextMessage(
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+
+        // pega o senderId do token JWT, não do body!
+        Long senderId = (Long) ((UsernamePasswordAuthenticationToken) authentication).getDetails();
+        Long receiverId = Long.parseLong(body.get("receiverId").toString());
+        String content = body.get("content").toString();
+
+        Message message = chatService.sendTextMessage(senderId, receiverId, content);
+
+        Map<String, String> payload = new HashMap<>();
+        payload.put("senderId", senderId.toString());
+        payload.put("senderUsername", message.getSender().getName());
+        payload.put("content", content);
+        payload.put("type", "TEXT");
+        payload.put("sentAt", message.getSentAt().toString());
+
+        messagingTemplate.convertAndSend("/topic/messages/" + receiverId, payload);
+
+        return ResponseEntity.ok(Map.of("message", "Mensagem enviada!"));
     }
 }

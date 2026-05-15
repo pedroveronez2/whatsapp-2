@@ -17,26 +17,27 @@ public class UserService {
     private final JwtService jwtService;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public User register(String username, String password) {
-        if (userRepository.existsByUsername(username)) {
-            throw new RuntimeException("Username já existe!");
+    public User register(String phone, String name, String password) {
+        if (userRepository.existsByPhone(phone)) {
+            throw new RuntimeException("Telefone já cadastrado!");
         }
 
         User user = new User();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password)); // bcrypt aqui!
+        user.setPhone(phone);
+        user.setName(name);
+        user.setPassword(passwordEncoder.encode(password));
         user.setOnline(false);
 
         return userRepository.save(user);
     }
 
-    public Optional<String> login(String username, String password) {
-        return userRepository.findByUsername(username)
+    public Optional<String> login(String phone, String password) {
+        return userRepository.findByPhone(phone)
                 .filter(u -> passwordEncoder.matches(password, u.getPassword()))
                 .map(u -> {
                     u.setOnline(true);
                     userRepository.save(u);
-                    return jwtService.generateToken(u.getId(), u.getUsername());
+                    return jwtService.generateToken(u.getId(), u.getPhone());
                 });
     }
 

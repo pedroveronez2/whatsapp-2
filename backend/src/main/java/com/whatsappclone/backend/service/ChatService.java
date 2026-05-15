@@ -1,7 +1,7 @@
 package com.whatsappclone.backend.service;
 
 import com.whatsappclone.backend.model.Message;
-import com.whatsappclone.backend.model.Message.MessageType;
+import com.whatsappclone.backend.model.MessageType;
 import com.whatsappclone.backend.model.User;
 import com.whatsappclone.backend.repository.MessageRepository;
 import com.whatsappclone.backend.repository.UserRepository;
@@ -54,10 +54,7 @@ public class ChatService {
     }
 
     public List<Message> getHistory(Long senderId, Long receiverId) {
-        return messageRepository
-            .findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderBySentAtAsc(
-                senderId, receiverId, receiverId, senderId
-            );
+        return messageRepository.findConversation(senderId, receiverId);
     }
 
     public List<Message> getRecentConversations(Long userId) {

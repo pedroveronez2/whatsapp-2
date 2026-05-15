@@ -30,4 +30,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(webSocketAuthInterceptor);
     }
+
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registry) {
+        registry.setMessageSizeLimit(512 * 1024);      // 512KB por mensagem
+        registry.setSendBufferSizeLimit(1024 * 1024);  // 1MB buffer
+        registry.setSendTimeLimit(20000);              // 20 segundos timeout
+    }
 }

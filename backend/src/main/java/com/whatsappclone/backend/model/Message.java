@@ -21,6 +21,7 @@ public class Message {
     @JoinColumn(name = "receiver_id", nullable = false)
     private User receiver;
 
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @Enumerated(EnumType.STRING)
@@ -33,9 +34,5 @@ public class Message {
     @PrePersist
     public void prePersist() {
         this.sentAt = LocalDateTime.now();
-    }
-
-    public enum MessageType {
-        TEXT, IMAGE, AUDIO
     }
 }

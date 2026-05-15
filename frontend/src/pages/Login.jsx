@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import './Login.css';
 
 function Login() {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
-  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,19 +19,24 @@ function Login() {
 
     try {
       if (isRegister) {
-        await api.post('/api/users/register', { username, password });
+        await api.post('/api/users/register', { phone, name, password });
         setIsRegister(false);
         setError('');
         alert('Usuário criado! Faça login.');
       } else {
-        const resp = await api.post('/api/users/login', { username, password });
-        localStorage.setItem('token', resp.data.token);
-        localStorage.setItem('username', username);
+        const resp = await api.post('/api/users/login', { phone, password });
 
-        // busca o ID do usuário
-        const users = await api.get('/api/users/list');
-        const me = users.data.find(u => u.username === username);
-        localStorage.setItem('userId', me.id);
+        // salva o token PRIMEIRO
+        localStorage.setItem('token', resp.data.token);
+
+        // atualiza o header do axios imediatamente
+        api.defaults.headers.common['Authorization'] = `Bearer ${resp.data.token}`;
+
+        // agora busca os dados do usuário
+        const meResp = await api.get('/api/users/me');
+        localStorage.setItem('userId', meResp.data.id);
+        localStorage.setItem('userName', meResp.data.name);
+        localStorage.setItem('userPhone', meResp.data.phone);
 
         navigate('/chat');
       }
@@ -41,22 +48,32 @@ function Login() {
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.box}>
-        <h2 style={styles.title}>💬 WhatsApp Clone</h2>
-        <h3 style={styles.subtitle}>{isRegister ? 'Criar conta' : 'Entrar'}</h3>
+    <div className="login-container">
+      <div className="login-box">
+        <h2 className="login-title">💬 WhatsApp Clone</h2>
+        <h3 className="login-subtitle">{isRegister ? 'Criar conta' : 'Entrar'}</h3>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={handleSubmit} className="login-form">
+          {isRegister && (
+            <input
+              className="login-input"
+              type="text"
+              placeholder="Seu nome"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
+            />
+          )}
           <input
-            style={styles.input}
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
+            className="login-input"
+            type="tel"
+            placeholder="Telefone (ex: 11999999999)"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
             required
           />
           <input
-            style={styles.input}
+            className="login-input"
             type="password"
             placeholder="Senha"
             value={password}
@@ -64,17 +81,17 @@ function Login() {
             required
           />
 
-          {error && <p style={styles.error}>{error}</p>}
+          {error && <p className="login-error">{error}</p>}
 
-          <button style={styles.button} type="submit" disabled={loading}>
+          <button className="login-button" type="submit" disabled={loading}>
             {loading ? 'Aguarde...' : isRegister ? 'Criar conta' : 'Entrar'}
           </button>
         </form>
 
-        <p style={styles.toggle}>
+        <p className="login-toggle">
           {isRegister ? 'Já tem conta?' : 'Não tem conta?'}{' '}
           <span
-            style={styles.link}
+            className="login-link"
             onClick={() => { setIsRegister(!isRegister); setError(''); }}
           >
             {isRegister ? 'Entrar' : 'Criar conta'}
@@ -84,72 +101,5 @@ function Login() {
     </div>
   );
 }
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-    backgroundColor: '#f0f2f5',
-  },
-  box: {
-    backgroundColor: 'white',
-    padding: '40px',
-    borderRadius: '12px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    width: '100%',
-    maxWidth: '380px',
-  },
-  title: {
-    textAlign: 'center',
-    color: '#128C7E',
-    marginBottom: '4px',
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: '#555',
-    fontWeight: 'normal',
-    marginBottom: '24px',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  input: {
-    padding: '12px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    fontSize: '14px',
-    outline: 'none',
-  },
-  button: {
-    padding: '12px',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#128C7E',
-    color: 'white',
-    fontSize: '16px',
-    cursor: 'pointer',
-    marginTop: '8px',
-  },
-  error: {
-    color: 'red',
-    fontSize: '13px',
-    textAlign: 'center',
-  },
-  toggle: {
-    textAlign: 'center',
-    marginTop: '16px',
-    fontSize: '14px',
-    color: '#555',
-  },
-  link: {
-    color: '#128C7E',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-  },
-};
 
 export default Login;

@@ -29,6 +29,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
+        // log temporário
+        System.out.println(">>> PATH: " + request.getRequestURI());
+        System.out.println(">>> AUTH HEADER: " + authHeader);
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
