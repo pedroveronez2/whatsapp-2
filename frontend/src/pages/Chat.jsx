@@ -50,6 +50,28 @@ function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // sincroniza selectedUser com o status atualizado da lista
+  useEffect(() => {
+    if (selectedUser) {
+      const updated = users.find(u => u.id === selectedUser.id);
+      if (updated && updated.online !== selectedUser.online) {
+        setSelectedUser(updated);
+      }
+    }
+  }, [users]);
+  // polling a cada 10 segundos para atualizar status online/offline
+  useEffect(() => {
+      const interval = setInterval(async () => {
+          try {
+              const resp = await api.get('/api/users/list');
+              setUsers(resp.data.filter(u => u.phone !== myPhone));
+          } catch (e) {
+              console.warn('Erro ao atualizar lista:', e);
+          }
+      }, 10000);
+
+      return () => clearInterval(interval);
+  }, []);
   async function loadUsers() {
     const resp = await api.get('/api/users/list');
     setUsers(resp.data.filter(u => u.phone !== myPhone));
