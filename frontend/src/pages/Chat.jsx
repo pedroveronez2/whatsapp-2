@@ -14,21 +14,44 @@ function Chat() {
   const [recording, setRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [expandedMessages, setExpandedMessages] = useState({});
+  const [unread, setUnread] = useState({});
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const messagesEndRef = useRef(null);
+  const selectedUserRef = useRef(null);
 
   const myId = localStorage.getItem('userId');
   const myName = localStorage.getItem('userName');
   const myPhone = localStorage.getItem('userPhone');
   const token = localStorage.getItem('token');
 
+  // sincroniza o ref com o state
+  useEffect(() => {
+    selectedUserRef.current = selectedUser;
+  }, [selectedUser]);
+
   useEffect(() => {
     loadUsers();
     connectWebSocket(
       token,
       myId,
-      (msg) => setMessages(prev => [...prev, { ...msg, fromMe: false }]),
+      (msg) => {
+        setMessages(prev => [...prev, { ...msg, fromMe: false }]);
+
+        // incrementa contador se não está conversando com esse usuário
+        setUnread(prev => {
+          const senderId = String(msg.senderId);
+          const isCurrentChat = selectedUserRef.current &&
+            String(selectedUserRef.current.id) === senderId;
+
+          if (isCurrentChat) return prev;
+
+          return {
+            ...prev,
+            [senderId]: (prev[senderId] || 0) + 1
+          };
+        });
+      },
       (presence) => {
         setUsers(prev => prev.map(u => {
           if (String(u.id) === String(presence.userId)) {
@@ -59,19 +82,21 @@ function Chat() {
       }
     }
   }, [users]);
+
   // polling a cada 10 segundos para atualizar status online/offline
   useEffect(() => {
-      const interval = setInterval(async () => {
-          try {
-              const resp = await api.get('/api/users/list');
-              setUsers(resp.data.filter(u => u.phone !== myPhone));
-          } catch (e) {
-              console.warn('Erro ao atualizar lista:', e);
-          }
-      }, 10000);
+    const interval = setInterval(async () => {
+      try {
+        const resp = await api.get('/api/users/list');
+        setUsers(resp.data.filter(u => u.phone !== myPhone));
+      } catch (e) {
+        console.warn('Erro ao atualizar lista:', e);
+      }
+    }, 10000);
 
-      return () => clearInterval(interval);
+    return () => clearInterval(interval);
   }, []);
+
   async function loadUsers() {
     const resp = await api.get('/api/users/list');
     setUsers(resp.data.filter(u => u.phone !== myPhone));
@@ -92,6 +117,11 @@ function Chat() {
 
   function toggleExpand(index) {
     setExpandedMessages(prev => ({ ...prev, [index]: !prev[index] }));
+  }
+
+  function handleSelectUser(user) {
+    setSelectedUser(user);
+    setUnread(prev => ({ ...prev, [String(user.id)]: 0 }));
   }
 
   async function handleSendText() {
@@ -253,13 +283,16 @@ function Chat() {
             <div
               key={user.id}
               className={`user-item ${selectedUser?.id === user.id ? 'user-item-active' : ''}`}
-              onClick={() => setSelectedUser(user)}
+              onClick={() => handleSelectUser(user)}
             >
               <div className="user-avatar">{user.name[0].toUpperCase()}</div>
-              <div>
+              <div className="user-info">
                 <p className="user-name">{user.name}</p>
                 <p className="user-status">{user.online ? '🟢 online' : '⚪ offline'}</p>
               </div>
+              {unread[String(user.id)] > 0 && (
+                <span className="unread-badge">{unread[String(user.id)]}</span>
+              )}
             </div>
           ))}
         </div>
