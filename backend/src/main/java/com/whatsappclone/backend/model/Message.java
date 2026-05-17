@@ -29,6 +29,8 @@ public class Message {
 
     private String mediaUrl;
 
+    private String fileName;
+
     private LocalDateTime sentAt;
 
     @PrePersist

@@ -49,6 +49,7 @@ public class ChatService {
         message.setType(type);
         message.setMediaUrl(mediaUrl);
         message.setContent(filename);
+        message.setFileName(file.getOriginalFilename());
 
         return messageRepository.save(message);
     }

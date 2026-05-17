@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { connectWebSocket, disconnectWebSocket } from '../services/websocket';
 import MessageContent from '../components/MessageContent';
+import DocumentMessage from '../components/DocumentMessage';
 import './Chat.css';
 
 function Chat() {
@@ -12,6 +13,7 @@ function Chat() {
   const [messages, setMessages] = useState([]);
   const [content, setContent] = useState('');
   const [imageFile, setImageFile] = useState(null);
+  const [docFile, setDocFile] = useState(null);
   const [recording, setRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [expandedMessages, setExpandedMessages] = useState({});
@@ -108,6 +110,7 @@ function Chat() {
       type: m.type || 'TEXT',
       content: m.content || '',
       mediaUrl: m.mediaUrl || null,
+      fileName: m.fileName || null,
     }));
     setMessages(history);
   }
@@ -161,6 +164,31 @@ function Chat() {
       sentAt: new Date().toISOString(),
     }]);
     setImageFile(null);
+  }
+
+  async function handleSendDocument() {
+    if (!docFile || !selectedUser) return;
+
+    const formData = new FormData();
+    formData.append('senderId', myId);
+    formData.append('receiverId', selectedUser.id);
+    formData.append('file', docFile);
+
+    try {
+      const resp = await api.post('/api/media/document', formData);
+      setMessages(prev => [...prev, {
+        type: 'DOCUMENT',
+        mediaUrl: resp.data.mediaUrl,
+        fileName: resp.data.fileName,
+        fromMe: true,
+        senderUsername: myName,
+        sentAt: new Date().toISOString(),
+      }]);
+      setDocFile(null);
+    } catch (err) {
+      console.error('Erro ao enviar documento:', err);
+      alert('Erro ao enviar documento!');
+    }
   }
 
   async function startRecording() {
@@ -262,6 +290,13 @@ function Chat() {
           />
         )}
 
+        {msg.type === 'DOCUMENT' && (
+          <DocumentMessage
+            mediaUrl={msg.mediaUrl}
+            fileName={msg.fileName || msg.content}
+          />
+        )}
+
         <p className="message-time">
           {msg.sentAt ? new Date(msg.sentAt).toLocaleTimeString('pt-BR', {
             hour: '2-digit',
@@ -326,7 +361,8 @@ function Chat() {
               />
               <button className="send-btn" onClick={handleSendText}>➤</button>
 
-              <label className="media-btn">
+              {/* Imagem */}
+              <label className="media-btn" title="Enviar imagem">
                 🖼️
                 <input
                   type="file"
@@ -339,8 +375,23 @@ function Chat() {
                 <button className="send-btn" onClick={handleSendImage}>Enviar img</button>
               )}
 
+              {/* Documento */}
+              <label className="media-btn" title="Enviar documento">
+                📄
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                  style={{ display: 'none' }}
+                  onChange={e => setDocFile(e.target.files[0])}
+                />
+              </label>
+              {docFile && (
+                <button className="send-btn" onClick={handleSendDocument}>Enviar doc</button>
+              )}
+
+              {/* Audio */}
               {!recording ? (
-                <button className="media-btn" onClick={startRecording}>🎤</button>
+                <button className="media-btn" title="Gravar áudio" onClick={startRecording}>🎤</button>
               ) : (
                 <button className="media-btn recording" onClick={stopRecording}>⏹</button>
               )}

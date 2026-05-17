@@ -86,4 +86,75 @@ public class MediaController {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @PostMapping("/document")
+    public ResponseEntity<?> sendDocument(
+            @RequestParam("senderId") Long senderId,
+            @RequestParam("receiverId") Long receiverId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        try {
+            String contentType = file.getContentType();
+            String originalFilename = file.getOriginalFilename();
+
+            if (!isValidDocument(contentType, originalFilename)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Tipo não suportado! Use PDF, Word, Excel, PowerPoint ou TXT."
+                ));
+            }
+
+            Message message = chatService.sendMediaMessage(senderId, receiverId, file, MessageType.DOCUMENT);
+
+            Map<String, String> payload = new HashMap<>();
+            payload.put("senderId", senderId.toString());
+            payload.put("senderUsername", message.getSender().getName());
+            payload.put("type", "DOCUMENT");
+            payload.put("mediaUrl", message.getMediaUrl());
+            payload.put("fileName", originalFilename != null ? originalFilename : "documento");
+            payload.put("sentAt", message.getSentAt().toString());
+
+            messagingTemplate.convertAndSend("/topic/messages/" + receiverId, payload);
+
+            return ResponseEntity.ok(Map.of(
+                "mediaUrl", message.getMediaUrl(),
+                "fileName", originalFilename != null ? originalFilename : "documento",
+                "message", "Documento enviado com sucesso!"
+            ));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    private boolean isValidDocument(String contentType, String filename) {
+        if (contentType == null && filename == null) return false;
+
+        String[] validTypes = {
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "text/plain"
+        };
+
+        if (contentType != null) {
+            for (String type : validTypes) {
+                if (type.equals(contentType)) return true;
+            }
+        }
+
+        if (filename != null) {
+            String lower = filename.toLowerCase();
+            return lower.endsWith(".pdf") || lower.endsWith(".doc") ||
+                   lower.endsWith(".docx") || lower.endsWith(".xls") ||
+                   lower.endsWith(".xlsx") || lower.endsWith(".ppt") ||
+                   lower.endsWith(".pptx") || lower.endsWith(".txt");
+        }
+
+        return false;
+    }
 }

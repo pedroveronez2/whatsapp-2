@@ -334,3 +334,50 @@
   color: #128C7E;
   font-size: 16px;
 }
+
+.document-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: #f0f2f5;
+  border-radius: 8px;
+  border-left: 3px solid #128C7E;
+  min-width: 200px;
+}
+
+.document-icon {
+  font-size: 28px;
+}
+
+.document-info {
+  flex: 1;
+}
+
+.document-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: bold;
+  color: #333;
+  word-break: break-word;
+}
+
+.document-type {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #888;
+}
+
+.document-download {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.document-download:hover {
+  background-color: #ddd;
+}
