@@ -269,3 +269,68 @@
   font-weight: bold;
   padding: 0 4px;
 }
+
+.message-link {
+  color: #128C7E;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.message-link:hover {
+  color: #0e7a70;
+}
+
+.youtube-embed {
+  margin-top: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.youtube-embed iframe {
+  display: block;
+  border-radius: 8px;
+}
+
+.link-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px;
+  background-color: #f0f2f5;
+  border-radius: 8px;
+  border-left: 3px solid #128C7E;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.2s;
+}
+
+.link-preview:hover {
+  background-color: #e0f2f1;
+}
+
+.link-preview-icon {
+  font-size: 24px;
+}
+
+.link-preview-info {
+  flex: 1;
+}
+
+.link-preview-name {
+  margin: 0;
+  font-weight: bold;
+  font-size: 13px;
+  color: #333;
+}
+
+.link-preview-url {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #888;
+}
+
+.link-preview-arrow {
+  color: #128C7E;
+  font-size: 16px;
+}

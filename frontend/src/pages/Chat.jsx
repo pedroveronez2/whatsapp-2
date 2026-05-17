@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { connectWebSocket, disconnectWebSocket } from '../services/websocket';
+import MessageContent from '../components/MessageContent';
 import './Chat.css';
 
 function Chat() {
@@ -25,7 +26,6 @@ function Chat() {
   const myPhone = localStorage.getItem('userPhone');
   const token = localStorage.getItem('token');
 
-  // sincroniza o ref com o state
   useEffect(() => {
     selectedUserRef.current = selectedUser;
   }, [selectedUser]);
@@ -38,7 +38,6 @@ function Chat() {
       (msg) => {
         setMessages(prev => [...prev, { ...msg, fromMe: false }]);
 
-        // incrementa contador se não está conversando com esse usuário
         setUnread(prev => {
           const senderId = String(msg.senderId);
           const isCurrentChat = selectedUserRef.current &&
@@ -73,7 +72,6 @@ function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // sincroniza selectedUser com o status atualizado da lista
   useEffect(() => {
     if (selectedUser) {
       const updated = users.find(u => u.id === selectedUser.id);
@@ -83,7 +81,6 @@ function Chat() {
     }
   }, [users]);
 
-  // polling a cada 10 segundos para atualizar status online/offline
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -231,15 +228,20 @@ function Chat() {
 
         {msg.type === 'TEXT' && (
           <>
-            <p className="message-text">
-              {isLong && !isExpanded
-                ? msg.content.substring(0, 300) + '...'
-                : msg.content}
-            </p>
-            {isLong && (
-              <span className="toggle-text" onClick={() => toggleExpand(index)}>
-                {isExpanded ? 'Ver menos ▲' : 'Ver mais ▼'}
-              </span>
+            {isLong ? (
+              <>
+                <div className="message-text">
+                  {isExpanded
+                    ? <MessageContent content={msg.content} />
+                    : <p className="message-text">{msg.content.substring(0, 300)}...</p>
+                  }
+                </div>
+                <span className="toggle-text" onClick={() => toggleExpand(index)}>
+                  {isExpanded ? 'Ver menos ▲' : 'Ver mais ▼'}
+                </span>
+              </>
+            ) : (
+              <MessageContent content={msg.content} />
             )}
           </>
         )}
