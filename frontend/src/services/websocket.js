@@ -19,7 +19,6 @@ export function connectWebSocket(token, userId, onMessage, onPresence) {
     };
 
     stompClient.connect(headers, () => {
-        console.log('WebSocket conectado!');
         connected = true;
         connecting = false;
 

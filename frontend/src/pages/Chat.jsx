@@ -29,7 +29,14 @@ function Chat() {
       token,
       myId,
       (msg) => setMessages(prev => [...prev, { ...msg, fromMe: false }]),
-      (presence) => console.log('Presença:', presence)
+      (presence) => {
+        setUsers(prev => prev.map(u => {
+          if (String(u.id) === String(presence.userId)) {
+            return { ...u, online: presence.online === 'true' };
+          }
+          return u;
+        }));
+      }
     );
 
     return () => disconnectWebSocket(myId);
@@ -48,27 +55,18 @@ function Chat() {
     setUsers(resp.data.filter(u => u.phone !== myPhone));
   }
 
-async function loadHistory() {
+  async function loadHistory() {
     const resp = await api.get(`/api/messages/${myId}/${selectedUser.id}`);
-    
-    console.log('=== LOAD HISTORY ===');
-    console.log('meu ID:', myId);
-    console.log('selectedUser ID:', selectedUser.id);
-    console.log('total mensagens:', resp.data.length);
-    resp.data.forEach((m, i) => {
-        console.log(`msg ${i+1}: de=${m.sender.name}(${m.sender.id}) | para=${m.receiver.name}(${m.receiver.id}) | fromMe=${String(m.sender.id) === String(myId)} | content=${m.content?.substring(0,20)}`);
-    });
-
     const history = resp.data.map(m => ({
-        ...m,
-        fromMe: String(m.sender.id) === String(myId),
-        senderUsername: m.sender.name,
-        type: m.type || 'TEXT',
-        content: m.content || '',
-        mediaUrl: m.mediaUrl || null,
+      ...m,
+      fromMe: String(m.sender.id) === String(myId),
+      senderUsername: m.sender.name,
+      type: m.type || 'TEXT',
+      content: m.content || '',
+      mediaUrl: m.mediaUrl || null,
     }));
     setMessages(history);
-}
+  }
 
   function toggleExpand(index) {
     setExpandedMessages(prev => ({ ...prev, [index]: !prev[index] }));
@@ -155,10 +153,16 @@ async function loadHistory() {
     setAudioBlob(null);
   }
 
-  function handleLogout() {
-    disconnectWebSocket(myId);
-    localStorage.clear();
-    navigate('/login');
+  async function handleLogout() {
+    try {
+      await api.post(`/api/users/logout/${myId}`);
+    } catch (e) {
+      console.warn('Erro ao fazer logout:', e);
+    } finally {
+      disconnectWebSocket(myId);
+      localStorage.clear();
+      navigate('/login');
+    }
   }
 
   function renderMessage(msg, index) {
