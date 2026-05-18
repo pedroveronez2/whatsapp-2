@@ -34,25 +34,31 @@ public class ChatService {
         return messageRepository.save(message);
     }
 
-    public Message sendMediaMessage(Long senderId, Long receiverId, MultipartFile file, MessageType type) {
-        User sender = userRepository.findById(senderId)
-                .orElseThrow(() -> new RuntimeException("Remetente não encontrado!"));
-        User receiver = userRepository.findById(receiverId)
-                .orElseThrow(() -> new RuntimeException("Destinatário não encontrado!"));
+public Message sendMediaMessage(Long senderId, Long receiverId, MultipartFile file, MessageType type) {
+    User sender = userRepository.findById(senderId)
+            .orElseThrow(() -> new RuntimeException("Remetente não encontrado!"));
+    User receiver = userRepository.findById(receiverId)
+            .orElseThrow(() -> new RuntimeException("Destinatário não encontrado!"));
 
-        String filename = fileStorageService.save(file);
-        String mediaUrl = "/uploads/" + filename;
+    String filename = fileStorageService.save(file);
+    String mediaUrl = "/uploads/" + filename;
 
-        Message message = new Message();
-        message.setSender(sender);
-        message.setReceiver(receiver);
-        message.setType(type);
-        message.setMediaUrl(mediaUrl);
-        message.setContent(filename);
-        message.setFileName(file.getOriginalFilename());
-
-        return messageRepository.save(message);
+    // sanitiza o nome original do arquivo
+    String originalName = file.getOriginalFilename();
+    if (originalName != null && originalName.length() > 200) {
+        originalName = originalName.substring(0, 200);
     }
+
+    Message message = new Message();
+    message.setSender(sender);
+    message.setReceiver(receiver);
+    message.setType(type);
+    message.setMediaUrl(mediaUrl);
+    message.setContent(filename);
+    message.setFileName(originalName);
+
+    return messageRepository.save(message);
+}
 
     public List<Message> getHistory(Long senderId, Long receiverId) {
         return messageRepository.findConversation(senderId, receiverId);
