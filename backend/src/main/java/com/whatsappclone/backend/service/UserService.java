@@ -3,6 +3,7 @@ package com.whatsappclone.backend.service;
 import com.whatsappclone.backend.model.User;
 import com.whatsappclone.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,31 +14,31 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final JwtService jwtService;
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public User register(String username, String password) {
-        if (userRepository.existsByUsername(username)) {
-            throw new RuntimeException("Username já existe!");
+    public User register(String phone, String name, String password) {
+        if (userRepository.existsByPhone(phone)) {
+            throw new RuntimeException("Telefone já cadastrado!");
         }
 
         User user = new User();
-        user.setUsername(username);
-        user.setPassword(password);
+        user.setPhone(phone);
+        user.setName(name);
+        user.setPassword(passwordEncoder.encode(password));
         user.setOnline(false);
 
         return userRepository.save(user);
     }
 
-    public Optional<User> login(String username, String password) {
-        Optional<User> userOpt = userRepository.findByUsername(username)
-                .filter(u -> u.getPassword().equals(password));
-
-        // atualiza status para online ao logar
-        userOpt.ifPresent(u -> {
-            u.setOnline(true);
-            userRepository.save(u);
-        });
-
-        return userOpt;
+    public Optional<String> login(String phone, String password) {
+        return userRepository.findByPhone(phone)
+                .filter(u -> passwordEncoder.matches(password, u.getPassword()))
+                .map(u -> {
+                    u.setOnline(true);
+                    userRepository.save(u);
+                    return jwtService.generateToken(u.getId(), u.getPhone());
+                });
     }
 
     public void logout(Long userId) {
